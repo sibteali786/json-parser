@@ -1,0 +1,178 @@
+package lexer
+
+import (
+	"json-parser/pkg/token"
+)
+
+type Lexer struct {
+	input        string
+	position     int
+	readPosition int
+	ch           byte
+	line         int
+	column       int
+}
+
+// New creates a new lexer instance
+func New(input string) *Lexer {
+	l := &Lexer{
+		input:  input,
+		line:   1,
+		column: 0,
+	}
+	l.readChar()
+	return l
+}
+
+// readChar reads the next character and advances position
+func (l *Lexer) readChar() {
+	if l.readPosition >= len(l.input) {
+		l.ch = 0 // ASCII NUL character represents EOF
+	} else {
+		l.ch = l.input[l.readPosition]
+	}
+	l.position = l.readPosition
+	l.readPosition++
+	// Track line and column for error reporting
+	if l.ch == '\n' {
+		l.line++
+		l.column = 0
+	} else {
+		l.column++
+	}
+}
+
+// peekChar returns the next character without advancing position
+func (l *Lexer) peekChar() byte {
+	if l.readPosition >= len(l.input) {
+		return 0
+	}
+	return l.input[l.readPosition]
+}
+
+// NextToken scans input and returns the next token
+func (l *Lexer) NextToken() token.Token {
+	var tok token.Token
+
+	// Skip whitespace
+	l.skipWhitespace()
+	// Create token based on current character
+	switch l.ch {
+	case '{':
+		tok = l.newToken(token.LEFT_BRACE, l.ch)
+	case '}':
+		tok = l.newToken(token.RIGHT_BRACE, l.ch)
+	case '[':
+		tok = l.newToken(token.LEFT_BRACKET, l.ch)
+	case ']':
+		tok = l.newToken(token.RIGHT_BRACKET, l.ch)
+	case ':':
+		tok = l.newToken(token.COLON, l.ch)
+	case ',':
+		tok = l.newToken(token.COMMA, l.ch)
+	case '"':
+		tok.Type = token.STRING
+		tok.Literal = l.readString()
+		tok.Line = l.line
+		tok.Column = l.column
+		return tok // Return early to avoid readChar() call
+	case 0:
+		tok.Type = token.EOF
+		tok.Literal = ""
+		tok.Line = l.line
+		tok.Column = l.column
+
+	default:
+		// Handle numbers, booleans, null, and illegal characters
+		if l.isDigit(l.ch) || l.ch == '-' {
+			tok.Type = token.NUMBER
+			tok.Literal = l.readNumber()
+			tok.Line = l.line
+			tok.Column = l.column
+			return tok
+		} else if l.isLetter(l.ch) {
+			tok.Literal = l.readIdentifier()
+			tok.Type = l.lookupIdent(tok.Literal)
+			tok.Line = l.line
+			tok.Column = l.column
+			return tok
+		} else {
+			tok = l.newToken(token.ILLEGAL, l.ch)
+		}
+	}
+
+	l.readChar() // Advance to the next character
+	return tok
+}
+
+// Helper methods (you'll need to implement these)
+func (l *Lexer) newToken(tokenType token.TokenType, ch byte) token.Token {
+	return token.Token{
+		Type:    tokenType,
+		Literal: string(ch),
+		Line:    l.line,
+		Column:  l.column,
+	}
+}
+
+func (l *Lexer) skipWhitespace() {
+	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
+		l.readChar()
+	}
+}
+
+func (l *Lexer) isDigit(ch byte) bool {
+	return '0' <= ch && ch <= '9'
+}
+
+func (l *Lexer) isLetter(ch byte) bool {
+	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
+}
+
+// TODO: Implement these helper methods
+func (l *Lexer) readString() string {
+	position := l.position + 1
+	for {
+		l.readChar()
+		if l.ch == '"' || l.ch == 0 {
+			break
+		}
+	}
+	return l.input[position:l.position]
+}
+
+func (l *Lexer) readNumber() string {
+	position := l.position
+
+	// Handle negative sign
+	if l.ch == '-' {
+		l.readChar()
+	}
+
+	// Read digits
+	for l.isDigit(l.ch) {
+		l.readChar()
+	}
+
+	return l.input[position:l.position]
+}
+func (l *Lexer) readIdentifier() string {
+	position := l.position
+	for l.isLetter(l.ch) || l.isDigit(l.ch) {
+		l.readChar()
+	}
+	return l.input[position:l.position]
+}
+
+func (l *Lexer) lookupIdent(ident string) token.TokenType {
+	switch ident {
+	case "true":
+		return token.TRUE
+	case "false":
+		return token.FALSE
+	case "null":
+		return token.NULL
+	default:
+		return token.ILLEGAL
+	}
+}
