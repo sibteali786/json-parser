@@ -62,6 +62,8 @@ func (p *Parser) parseValue() JSONValue {
 	switch p.curToken.Type {
 	case token.LEFT_BRACE:
 		return p.parseObject()
+	case token.LEFT_BRACKET:
+		return p.parseArray()
 	case token.STRING:
 		return p.parseString()
 	case token.NUMBER:
@@ -208,4 +210,38 @@ func (p *Parser) parseNull() *JSONNull {
 
 	p.nextToken()
 	return &JSONNull{}
+}
+
+func (p *Parser) parseArray() *JSONArray {
+	arr := &JSONArray{Elements: []JSONValue{}}
+	// TODO: Expect LEFT_BRACKET token
+	if !p.expectToken(token.LEFT_BRACKET) {
+		return nil
+	}
+	// TODO: Handle empty array case
+	if p.curToken.Type == token.RIGHT_BRACKET {
+		p.nextToken()
+		return arr
+	}
+	// TODO: Parse first element
+	value := p.parseValue()
+	if value == nil {
+		return nil
+	}
+
+	arr.Elements = append(arr.Elements, value)
+	// TODO: Parse additional elements (comma-separated loop)
+	for p.curToken.Type == token.COMMA {
+		p.nextToken() // consume comma
+		value := p.parseValue()
+		if value == nil {
+			return nil
+		}
+		arr.Elements = append(arr.Elements, value)
+	}
+	// TODO: Expect RIGHT_BRACKET token
+	if !p.expectToken(token.RIGHT_BRACKET) {
+		return nil
+	}
+	return arr
 }
