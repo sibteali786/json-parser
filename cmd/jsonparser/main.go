@@ -35,8 +35,12 @@ func main() {
 	p := parser.New(l)
 
 	// Parse JSON
-	if p.ParseJSON() {
+	value, success := p.ParseJSON()
+	if success {
 		fmt.Println("Valid JSON")
+		if value != nil {
+			fmt.Printf("Parsed: %s\n", value)
+		}
 		os.Exit(0)
 	} else {
 		fmt.Println("Invalid JSON")

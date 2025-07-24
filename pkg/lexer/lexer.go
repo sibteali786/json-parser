@@ -85,8 +85,15 @@ func (l *Lexer) NextToken() token.Token {
 	default:
 		// Handle numbers, booleans, null, and illegal characters
 		if l.isDigit(l.ch) || l.ch == '-' {
-			tok.Type = token.NUMBER
-			tok.Literal = l.readNumber()
+			numStr := l.readNumber()
+			if l.hasLeadingZero(numStr) {
+				tok.Type = token.ILLEGAL
+				tok.Literal = numStr
+			} else {
+				tok.Type = token.NUMBER
+				tok.Literal = numStr
+			}
+
 			tok.Line = l.line
 			tok.Column = l.column
 			return tok
@@ -131,14 +138,24 @@ func (l *Lexer) isLetter(ch byte) bool {
 
 // TODO: Implement these helper methods
 func (l *Lexer) readString() string {
-	position := l.position + 1
+	position := l.position + 1 // Start after opening quote
+
 	for {
 		l.readChar()
-		if l.ch == '"' || l.ch == 0 {
+		if l.ch == '"' || l.ch == 0 { // Found closing quote or EOF
 			break
 		}
 	}
-	return l.input[position:l.position]
+
+	// Extract string content (between quotes)
+	str := l.input[position:l.position]
+
+	// Advance past the closing quote
+	if l.ch == '"' {
+		l.readChar()
+	}
+
+	return str
 }
 
 func (l *Lexer) readNumber() string {
@@ -147,14 +164,58 @@ func (l *Lexer) readNumber() string {
 	// Handle negative sign
 	if l.ch == '-' {
 		l.readChar()
+		if l.isDigit(l.ch) {
+			return l.input[position:l.position]
+		}
+	}
+	if l.ch == '0' {
+		l.readChar()
+
+		if l.isDigit(l.ch) {
+			// This is invalid! Leading zeros not allowed (except for "0" itself)
+			// Continue reading the invalid number for error reporting
+			for l.isDigit(l.ch) {
+				l.readChar()
+			}
+			return l.input[position:l.position] // Return the invalid number
+		}
+	} else if l.isDigit(l.ch) {
+		// Normal number: read all digits
+		for l.isDigit(l.ch) {
+			l.readChar()
+		}
 	}
 
-	// Read digits
-	for l.isDigit(l.ch) {
+	// Handle the decimal part
+	if l.ch == '.' {
 		l.readChar()
+		if !l.isDigit(l.ch) {
+			return l.input[position:l.position]
+		}
+
+		for l.isDigit(l.ch) {
+			l.readChar()
+		}
+	}
+
+	// Handle exponent part (optional)
+	if l.ch == 'e' || l.ch == 'E' {
+		l.readChar()
+		// Handle optional + or - in exponent
+		if l.ch == '+' || l.ch == '-' {
+			l.readChar()
+		}
+		// Must have at least one digit in exponent
+		if !l.isDigit(l.ch) {
+			return l.input[position:l.position] // Invalid: "1e" without digits
+		}
+		for l.isDigit(l.ch) {
+			l.readChar()
+		}
 	}
 
 	return l.input[position:l.position]
+
 }
 func (l *Lexer) readIdentifier() string {
 	position := l.position
@@ -175,4 +236,22 @@ func (l *Lexer) lookupIdent(ident string) token.TokenType {
 	default:
 		return token.ILLEGAL
 	}
+}
+
+func (l *Lexer) hasLeadingZero(numStr string) bool {
+	// make sure its at least not single digit
+	if len(numStr) < 2 {
+		return false
+	}
+
+	start := 0
+	if numStr[0] == '-' {
+		start = 1
+		if len(numStr) < 3 { // "-0" or "-1" etc. are valid
+			return false
+		}
+	}
+
+	return numStr[start] == '0' && numStr[start+1] >= '0' && numStr[start+1] <= '9'
+
 }
