@@ -44,6 +44,12 @@ func (p *Parser) peekError(t token.TokenType) {
 
 // ParseJSON parses the JSON input and returns true if valid
 func (p *Parser) ParseJSON() (JSONValue, bool) {
+	// JSON spec: root must be object or array
+	if p.curToken.Type != token.LEFT_BRACE && p.curToken.Type != token.LEFT_BRACKET {
+		p.errors = append(p.errors, fmt.Sprintf("expected JSON to start with '{' or '[', got %s at line %d, column %d",
+			p.curToken.Type, p.curToken.Line, p.curToken.Column))
+		return nil, false
+	}
 	value := p.parseValue()
 	if len(p.errors) > 0 {
 		return nil, false
