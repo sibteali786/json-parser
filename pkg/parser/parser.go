@@ -13,7 +13,10 @@ type Parser struct {
 	peekToken token.Token
 
 	errors []string
+	depth  int
 }
+
+const MAX_DEPTH = 18
 
 func New(l *lexer.Lexer) *Parser {
 	p := &Parser{
@@ -87,6 +90,14 @@ func (p *Parser) parseValue() JSONValue {
 
 // parseObject parses a JSON object
 func (p *Parser) parseObject() *JSONObject {
+	p.depth++
+	if p.depth > MAX_DEPTH {
+		p.errors = append(p.errors, fmt.Sprintf("maximum nesting depth of %d exceeded at line %d, column %d",
+			MAX_DEPTH, p.curToken.Line, p.curToken.Column))
+		return nil
+	}
+	// decrement depth on exit
+	defer func() { p.depth-- }()
 	obj := &JSONObject{Pairs: make(map[string]JSONValue)}
 
 	if !p.expectToken(token.LEFT_BRACE) {
@@ -219,6 +230,14 @@ func (p *Parser) parseNull() *JSONNull {
 }
 
 func (p *Parser) parseArray() *JSONArray {
+	p.depth++
+	if p.depth > MAX_DEPTH {
+		p.errors = append(p.errors, fmt.Sprintf("maximum nesting depth of %d exceeded at line %d, column %d",
+			MAX_DEPTH, p.curToken.Line, p.curToken.Column))
+		return nil
+	}
+	// decrement depth on exit
+	defer func() { p.depth-- }()
 	arr := &JSONArray{Elements: []JSONValue{}}
 	// TODO: Expect LEFT_BRACKET token
 	if !p.expectToken(token.LEFT_BRACKET) {
