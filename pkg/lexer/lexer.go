@@ -155,6 +155,11 @@ func (l *Lexer) readString() string {
 			break
 		}
 
+		// Check for invalid control characters (0-31 except tab/newline in escaped form) these are control characters
+		if l.ch < 32 && l.ch != 0 {
+			l.hasError = true // Raw control character not allowed
+		}
+
 		if l.ch == '\\' {
 			// TODO: Handle escape sequences
 			// Your task: implement this logic
