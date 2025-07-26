@@ -95,7 +95,7 @@ func (l *Lexer) NextToken() token.Token {
 		// Handle numbers, booleans, null, and illegal characters
 		if l.isDigit(l.ch) || l.ch == '-' {
 			numStr := l.readNumber()
-			if l.hasLeadingZero(numStr) {
+			if l.hasLeadingZero(numStr) || l.hasInvalidExponent(numStr) {
 				tok.Type = token.ILLEGAL
 				tok.Literal = numStr
 			} else {
@@ -328,6 +328,18 @@ func (l *Lexer) isHexDigit(ch byte) bool {
 		return true
 	}
 	if (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') {
+		return true
+	}
+	return false
+}
+
+func (l *Lexer) hasInvalidExponent(numStr string) bool {
+	if len(numStr) < 2 {
+		return false
+	}
+
+	last := numStr[len(numStr)-1]
+	if last == 'e' || last == 'E' || last == '+' || last == '-' {
 		return true
 	}
 	return false
