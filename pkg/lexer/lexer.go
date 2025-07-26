@@ -142,7 +142,18 @@ func (l *Lexer) readString() string {
 
 	for {
 		l.readChar()
-		if l.ch == '"' || l.ch == 0 { // Found closing quote or EOF
+		if l.ch == 0 {
+			break
+		}
+
+		if l.ch == '\\' {
+			// TODO: Handle escape sequences
+			// Your task: implement this logic
+			// Hint: read the next character and handle \", \\, \n, etc.
+			l.handleEscapeSequence()
+			continue
+		}
+		if l.ch == '"' { // Found closing quote or EOF
 			break
 		}
 	}
@@ -164,7 +175,7 @@ func (l *Lexer) readNumber() string {
 	// Handle negative sign
 	if l.ch == '-' {
 		l.readChar()
-		if l.isDigit(l.ch) {
+		if !l.isDigit(l.ch) {
 			return l.input[position:l.position]
 		}
 	}
@@ -254,4 +265,54 @@ func (l *Lexer) hasLeadingZero(numStr string) bool {
 
 	return numStr[start] == '0' && numStr[start+1] >= '0' && numStr[start+1] <= '9'
 
+}
+
+func (l *Lexer) handleEscapeSequence() {
+	// read the character after back slash
+	l.readChar()
+
+	switch l.ch {
+	case '"':
+		// Escaped quote: continue reading
+	case '\\':
+		// Escaped backslash: continue reading
+	case '/':
+		// Escaped slash: continue reading
+	case 'b':
+		// Backspace: continue reading
+	case 'f':
+		// Form feed: continue reading
+	case 'n':
+		// Newline: continue reading
+	case 'r':
+		// Carriage return: continue reading
+	case 't':
+		// Tab: continue reading
+	case 'u':
+		// TODO: Unicode escape sequence \uXXXX
+		// Your task: read 4 hex digits
+		l.handleUnicodeEscape()
+	default:
+		// Invalid escape sequence - for now, just continue
+		// In a production parser, you'd want to report an error
+	}
+}
+
+func (l *Lexer) handleUnicodeEscape() {
+	for i := 0; i < 4; i++ {
+		l.readChar()
+		if !l.isHexDigit(l.ch) {
+			return
+		}
+	}
+}
+func (l *Lexer) isHexDigit(ch byte) bool {
+	// TODO: Check if ch is 0-9, a-f, or A-F
+	if ch >= '0' && ch <= '9' {
+		return true
+	}
+	if (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') {
+		return true
+	}
+	return false
 }
