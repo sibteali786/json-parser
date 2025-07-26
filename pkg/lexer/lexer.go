@@ -11,6 +11,7 @@ type Lexer struct {
 	ch           byte
 	line         int
 	column       int
+	hasError     bool
 }
 
 // New creates a new lexer instance
@@ -71,8 +72,16 @@ func (l *Lexer) NextToken() token.Token {
 	case ',':
 		tok = l.newToken(token.COMMA, l.ch)
 	case '"':
-		tok.Type = token.STRING
-		tok.Literal = l.readString()
+		l.hasError = false
+		str := l.readString()
+
+		if l.hasError {
+			tok.Type = token.ILLEGAL
+			tok.Literal = str
+		} else {
+			tok.Type = token.STRING
+			tok.Literal = str
+		}
 		tok.Line = l.line
 		tok.Column = l.column
 		return tok // Return early to avoid readChar() call
@@ -295,6 +304,7 @@ func (l *Lexer) handleEscapeSequence() {
 	default:
 		// Invalid escape sequence - for now, just continue
 		// In a production parser, you'd want to report an error
+		l.hasError = true
 	}
 }
 
@@ -302,6 +312,7 @@ func (l *Lexer) handleUnicodeEscape() {
 	for i := 0; i < 4; i++ {
 		l.readChar()
 		if !l.isHexDigit(l.ch) {
+			l.hasError = true
 			return
 		}
 	}
